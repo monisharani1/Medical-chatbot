@@ -6,7 +6,7 @@ For human like conversation regarding health. Like talking with a   Virtual doct
 ## STEP 01- Clone the repository
 
 ```bash
-git clone https://github.com/monisharani1/Medical-chatbot.git
+git clone https://github.com/monisharani1/Medical-chatbot
 ```
 
 ---
@@ -67,3 +67,4 @@ PINECONE_API_KEY=your_pinecone_api_key
 ```bash
 python app.py
 ```
+## TEST UPDATE
