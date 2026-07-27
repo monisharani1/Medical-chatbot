@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedVibe | Virtual Medical AI Assistant</title>
+    <!-- Google Fonts: Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Background dynamic gradient orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="app-container">
+        <!-- Main Chat Wrapper -->
+        <main class="chat-card">
+            <!-- Header section -->
+            <header class="chat-header">
+                <div class="header-logo">
+                    <div class="logo-icon">
+                        <i class="fa-solid fa-user-doctor"></i>
+                    </div>
+                    <div class="logo-text">
+                        <h1>MedVibe</h1>
+                        <span class="status"><span class="status-dot"></span> Virtual Doctor Online</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="action-btn" id="clear-chat" title="Clear Chat History">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Chat message area -->
+            <div class="chat-body" id="chat-messages">
+                <!-- Welcome card -->
+                <div class="welcome-card" id="welcome-message">
+                    <div class="welcome-icon">
+                        <i class="fa-solid fa-laptop-medical"></i>
+                    </div>
+                    <h2>Welcome to MedVibe</h2>
+                    <p>I am your virtual medical assistant. I can query our clinical reference database to provide info on drugs, symptoms, and medical guidelines. How can I help you today?</p>
+                    <div class="suggested-prompts">
+                        <button class="prompt-pill" onclick="sendSuggested('What are the indications of Amoxicillin?')">
+                            Indications of Amoxicillin?
+                        </button>
+                        <button class="prompt-pill" onclick="sendSuggested('What is the dosage of Paracetamol for children?')">
+                            Paracetamol dosage?
+                        </button>
+                        <button class="prompt-pill" onclick="sendSuggested('What are the precautions for treating anaemia?')">
+                            Anaemia precautions?
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input area -->
+            <footer class="chat-footer">
+                <form id="message-form" class="input-container">
+                    <input 
+                        type="text" 
+                        id="message-input" 
+                        placeholder="Ask a medical question (e.g. precautions for anaemia)..." 
+                        autocomplete="off" 
+                        required
+                    />
+                    <button type="submit" class="send-btn" id="send-button" title="Send Message">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </footer>
+        </main>
+    </div>
+
+    <!-- JavaScript logic -->
+    <script>
+        const chatForm = document.getElementById('message-form');
+        const chatInput = document.getElementById('message-input');
+        const chatMessages = document.getElementById('chat-messages');
+        const welcomeMessage = document.getElementById('welcome-message');
+        const clearChatBtn = document.getElementById('clear-chat');
+
+        // Handles sending a message
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const messageText = chatInput.value.trim();
+            if (!messageText) return;
+
+            sendMessage(messageText);
+        });
+
+        // Click handler for suggested prompts
+        function sendSuggested(promptText) {
+            sendMessage(promptText);
+        }
+
+        // Main function to send message
+        function sendMessage(text) {
+            // Remove welcome card if it exists
+            if (welcomeMessage) {
+                welcomeMessage.remove();
+            }
+
+            // Append User message
+            appendMessage(text, 'user');
+            chatInput.value = '';
+            chatInput.focus();
+
+            // Append typing indicator
+            const typingIndicator = appendTypingIndicator();
+            scrollToBottom();
+
+            // Send AJAX request
+            const formData = new FormData();
+            formData.append('msg', text);
+
+            fetch('/get', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Remove typing indicator
+                typingIndicator.remove();
+
+                // Append Bot response
+                appendMessage(data.response, 'bot', data.sources);
+                scrollToBottom();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                typingIndicator.remove();
+                appendMessage("Sorry, I encountered an issue connecting to the server. Please try again.", 'bot');
+                scrollToBottom();
+            });
+        }
+
+        // Helper to append messages to chat body
+        function appendMessage(text, sender, sources = []) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.classList.add('message-wrapper', sender);
+
+            const avatar = document.createElement('div');
+            avatar.classList.add('avatar');
+            if (sender === 'user') {
+                avatar.innerHTML = '<i class="fa-solid fa-user"></i>';
+            } else {
+                avatar.innerHTML = '<i class="fa-solid fa-user-doctor"></i>';
+            }
+
+            const messageBox = document.createElement('div');
+            messageBox.classList.add('message-box');
+
+            const content = document.createElement('div');
+            content.classList.add('message-content');
+            content.textContent = text;
+            messageBox.appendChild(content);
+
+            // If bot message has sources, render them beautifully
+            if (sender === 'bot' && sources && sources.length > 0) {
+                const sourcesContainer = document.createElement('div');
+                sourcesContainer.classList.add('sources-container');
+                
+                const sourcesTitle = document.createElement('span');
+                sourcesTitle.classList.add('sources-title');
+                sourcesTitle.innerHTML = '<i class="fa-solid fa-book-open-reader"></i> Sources:';
+                sourcesContainer.appendChild(sourcesTitle);
+
+                const sourcesList = document.createElement('div');
+                sourcesList.classList.add('sources-list');
+
+                sources.forEach(src => {
+                    const pill = document.createElement('span');
+                    pill.classList.add('source-pill');
+                    pill.innerHTML = `<i class="fa-solid fa-file-pdf"></i> ${src.source} (${src.page})`;
+                    sourcesList.appendChild(pill);
+                });
+
+                sourcesContainer.appendChild(sourcesList);
+                messageBox.appendChild(sourcesContainer);
+            }
+
+            messageWrapper.appendChild(avatar);
+            messageWrapper.appendChild(messageBox);
+            chatMessages.appendChild(messageWrapper);
+        }
+
+        // Helper to append typing indicator
+        function appendTypingIndicator() {
+            const wrapper = document.createElement('div');
+            wrapper.classList.add('message-wrapper', 'bot', 'typing');
+
+            const avatar = document.createElement('div');
+            avatar.classList.add('avatar');
+            avatar.innerHTML = '<i class="fa-solid fa-user-doctor"></i>';
+
+            const messageBox = document.createElement('div');
+            messageBox.classList.add('message-box');
+
+            const indicator = document.createElement('div');
+            indicator.classList.add('typing-indicator');
+            indicator.innerHTML = '<span></span><span></span><span></span>';
+
+            messageBox.appendChild(indicator);
+            wrapper.appendChild(avatar);
+            wrapper.appendChild(messageBox);
+            chatMessages.appendChild(wrapper);
+
+            return wrapper;
+        }
+
+        // Clear chat handler
+        clearChatBtn.addEventListener('click', function() {
+            if (confirm("Are you sure you want to reset the conversation?")) {
+                location.reload();
+            }
+        });
+
+        // Scroll helper
+        function scrollToBottom() {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    </script>
+</body>
+</html>
